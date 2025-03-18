@@ -1,36 +1,38 @@
 import networkx as nx
 import random
 
-# Create a directed graph
+
 TTC = nx.DiGraph()
+
 
 def generate_valid_random_path(graph, start=None):
     """
-    Generates a valid random path through the subway system, ensuring connectivity.
+    Generates a random path through the subway system.
 
     :param graph: NetworkX graph of the TTC system
     :param start: (Optional) Starting station; defaults to a random valid node.
-    :return: A list of stations representing a random but valid path.
+    :return: A list of stations.
     """
     if start is None:
         start = random.choice(list(graph.nodes))  # Pick a random starting station
 
-    visited = {start}  # Track visited stations
+    visited = {start}
     path = [start]
-    current = start
+    current_stop = start
 
     while len(visited) < len(graph.nodes):
-        neighbors = list(graph.neighbors(current))  # Get connected stations
+        neighbors = list(graph.neighbors(current_stop))
+
         unvisited_neighbors = [n for n in neighbors if n not in visited]
 
         if unvisited_neighbors:
-            next_station = random.choice(unvisited_neighbors)  # Prefer unvisited
+            next_stop = random.choice(unvisited_neighbors)  # Prefer unvisited stations
         else:
-            next_station = random.choice(neighbors)  # Force a move if stuck
+            next_stop = random.choice(neighbors)
 
-        path.append(next_station)
-        visited.add(next_station)
-        current = next_station
+        path.append(next_stop)
+        visited.add(next_stop)
+        current_stop = next_stop
 
     return path
 
@@ -55,16 +57,16 @@ edges = [
     ("Bay", "Bloor-Yonge", 1, 2), ("Bloor-Yonge", "Bay", 1, 2),
     ("Bloor-Yonge", "Kennedy", 24, 2), ("Kennedy", "Bloor-Yonge", 24, 2),
     ("Sheppard-Yonge", "Don Mills", 8, 4), ("Don Mills", "Sheppard-Yonge", 8, 4),
-    ("Kennedy", "Don Mills", 50, 5), ("Don Mills", "Kennedy", 50, 5),  # 985 Sheppard East Express
-    ("Kennedy", "Finch", 65, 5), ("Finch", "Kennedy", 65, 5),  # Bus 939(B) Finch Express
-    ("Finch", "Finch-West", 20, 6), ("Finch-West", "Finch", 20, 6),  # Street car 36 Finch West
-    ("Finch", "Pioneer Village", 32, 5), ("Pioneer Village", "Finch", 32, 5),  # Bus 960 Steels West Express
-    ("Sheppard-Yonge", "Sheppard-West", 15, 5), ("Sheppard-West", "Sheppard-Yonge", 15, 5),  # Bus 984(A) Sheppard West Express
+    ("Kennedy", "Don Mills", 50, 5), ("Don Mills", "Kennedy", 50, 5),   # 985 Sheppard East Express
+    ("Kennedy", "Finch", 65, 5), ("Finch", "Kennedy", 65, 5),   # Bus 939(B) Finch Express
+    ("Finch", "Finch-West", 20, 6), ("Finch-West", "Finch", 20, 6), # Street car 36 Finch West
+    ("Finch", "Pioneer Village", 32, 5), ("Pioneer Village", "Finch", 32, 5),   # Bus 960 Steels West Express
+    ("Sheppard-Yonge", "Sheppard-West", 15, 5), ("Sheppard-West", "Sheppard-Yonge", 15, 5)  # Bus 984(A) Sheppard West Express
 ]
 
-# Add edges to the directed graph
+# Add edges
 for u, v, w, l in edges:
-    TTC.add_edge(u, v, weight=w, line=l)
+    TTC.add_edge(u, v, time=w, line=l)
 
 # Number of RSZ between stations (There are currently 11 Reduced Speed Zones across Lines 1 and 2.)
 reduced_speed_zones = {
@@ -76,14 +78,14 @@ reduced_speed_zones = {
     ("Sheppard-West", "Eglinton-West"): 2
 }
 
-# Apply slow zones selectively
+# Apply slow zones
 for (u, v), rsz in reduced_speed_zones.items():
     print(f"Implementing {rsz} reduced speed zone{'s' * (rsz > 1)} from {u} to {v}")
 
     # One reduced speed zone can add approximately one to three minutes to a subway trip.
     time_loss = 0
 
-    TTC[u][v]['weight'] += rsz * time_loss
+    TTC[u][v]["time"] += rsz * time_loss
 
 print(TTC.nodes())
 
@@ -111,8 +113,8 @@ for i in range(100_000):
         current_station = shortest_path[stop]
         next_station = shortest_path[stop + 1]
 
-        # Add travel weight
-        length += TTC[current_station][next_station]["weight"]
+        # Add base travel time
+        length += TTC[current_station][next_station]["time"]
 
         if stop < len(shortest_path) - 2:
             next_next_station = shortest_path[stop + 2]
@@ -128,12 +130,12 @@ for i in range(100_000):
                     length += direction_swap_penalty
                     direction_changes += 1
 
-            if current_line != next_line: # Check if switching lines (including bus)
+            if current_line != next_line:  # Check if switching lines (including bus)
                 length += line_swap_penalty
 
-                if next_line == 5:
+                if next_line == 5:  # Bus
                     busses += 1
-                elif next_line == 6:
+                elif next_line == 6:  # Streetcar
                     street_cars += 1
                 else:
                     line_changes += 1
@@ -145,4 +147,5 @@ for i in range(100_000):
         fastest = length
         print(f"New best route found with a time of {fastest} ({fastest // 60} hours and {fastest % 60} minutes)")
         print(best_route[:-1])
-        print(f"End of lines: {best_route[-1][0]}, Direction changes: {best_route[-1][1]}, Line changes: {best_route[-1][2]}, Busses: {best_route[-1][3]}, Street cars: {best_route[-1][4]}")
+        print(
+            f"End of lines: {best_route[-1][0]}, Direction changes: {best_route[-1][1]}, Line changes: {best_route[-1][2]}, Busses: {best_route[-1][3]}, Streetcars: {best_route[-1][4]}")
